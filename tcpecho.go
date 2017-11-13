@@ -1,28 +1,52 @@
 package main
 
-import "net"
-import "fmt"
-import "bufio"
-import "strings" // only needed below for sample processing
+import (
+	"fmt"
+	"net"
+	"os"
+)
+
+const (
+	CONN_HOST = ""
+	CONN_PORT = "8080"
+	CONN_TYPE = "tcp"
+)
 
 func main() {
-	fmt.Println("Launching server...")
-	ln, _ := net.Listen("tcp", ":8080")
-
-	// accept connection on port
-	conn, _ := ln.Accept()
-
-	// run loop forever (or until ctrl-c)
-	for {
-		// will listen for message to process ending in newline (\n)
-		message, _ := bufio.NewReader(conn).ReadString('\n')
-		if len(message) > 0 {
-			// output message received
-			fmt.Print("Message Received:", string(message), len(message))
-			// sample process for string received
-			newmessage := strings.ToUpper(message)
-			// send new string back to client
-			conn.Write([]byte(newmessage + "\n"))
-		}
+	// Listen for incoming connections.
+	l, err := net.Listen(CONN_TYPE, CONN_HOST+":"+CONN_PORT)
+	if err != nil {
+		fmt.Println("Error listening:", err.Error())
+		os.Exit(1)
 	}
+	// Close the listener when the application closes.
+	defer l.Close()
+	fmt.Println("Listening on " + CONN_HOST + ":" + CONN_PORT)
+	for {
+		// Listen for an incoming connection.
+		conn, err := l.Accept()
+		if err != nil {
+			fmt.Println("Error accepting: ", err.Error())
+			os.Exit(1)
+		}
+		// Handle connections in a new goroutine.
+		go handleRequest(conn)
+	}
+}
+
+// Handles incoming requests.
+func handleRequest(conn net.Conn) {
+	// Make a buffer to hold incoming data.
+	buf := make([]byte, 1024)
+	// Read the incoming connection into the buffer.
+	reqLen, err := conn.Read(buf)
+	if err != nil {
+		fmt.Println("Error reading:", err.Error())
+	}
+	if reqLen > 0 {
+		// Send a response back to person contacting us.
+		conn.Write(buf)
+	}
+	// Close the connection when you're done with it.
+	defer conn.Close()
 }
